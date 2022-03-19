@@ -20,19 +20,12 @@
               <li class="nav-item active">
                 <a class="nav-link" href="{{ url_for('home') }}">Home <span class="sr-only">(current)</span></a>
               </li>
-                {% if current_user.is_authenticated %}
+                <li class="nav-item active">
+                  <a class="nav-link" href="{{url_for('filesEstimated')}}">My files</a>
+                </li>
                 <li class="nav-item active">
                   <a class="nav-link" href="{{url_for('logout')}}">Logout</a>
                 </li>
-
-                {% else %}
-                <li class="nav-item active">
-                  <a class="nav-link" href="{{url_for('login')}}">Signin</a>
-                </li>
-                <li class="nav-item active">
-                  <a class="nav-link" href="{{url_for('signup')}}">Signup</a>
-                </li>
-                {% endif %}
             </ul>
           </div>
         </nav>
@@ -47,12 +40,38 @@
             {% endfor %}
         {% endif %}
         {% endwith %}
+        {% block content %}
         <p>Upload a csv file to view its data.</p>
         <form method="POST" enctype="multipart/form-data" action="/">
             <input type="file" id="myFile" name="filename" accept=".csv">
             <br>
+            <fieldset class="form-group">
+            <legend class="mb-2">
+                I want my data to be represented (choose as many values as wanted):
+            </legend>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="daily" name="daily">
+                  <label class="form-check-label" for="daily">
+                    Daily
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="weekly" name="weekly">
+                  <label class="form-check-label" for="weekly">
+                    Weekly
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="yearly" name="yearly">
+                  <label class="form-check-label" for="yearly">
+                    Yearly
+                  </label>
+                </div>
+
+            </fieldset>
             <button type="submit" class="btn btn-info my-2"> Submit </button>
         </form>
+        {% endblock %}
     </div>
 </body>
 </html>

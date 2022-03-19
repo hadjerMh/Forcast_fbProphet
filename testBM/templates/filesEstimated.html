@@ -1,0 +1,24 @@
+{% extends "home.html" %}
+{% block content %}
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Uploaded files</th>
+      <th scope="col">Results</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for file in files %}
+    <tr>
+      <td>{{file.originalFileName}}</td>
+      <td><a href="{{ url_for('results',fileid=file.id) }}">Click here</a> </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+
+
+
+
+{% endblock %}

@@ -1,11 +1,12 @@
-<!doctype html>
-<title>Python Flask File Download Example</title>
-<h2>Download a file</h2>
-
+{% extends "home.html" %}
+{% block content %}
 <p>
 	<img src="{{url_for('send_file',filename=fig1)}}">
 	<a href="{{ url_for('send_file',filename=fig1) }}">Download</a>
 	<img src="{{url_for('send_file',filename=fig2)}}">
 	<a href="{{ url_for('send_file',filename=fig2) }}">Download</a>
+	<br>
 	Download the CSV file here
+	<a href="{{ url_for('download_csv',filename=filename) }}">Download</a>
 </p>
+{% endblock %}

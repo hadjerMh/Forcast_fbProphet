@@ -58,17 +58,27 @@ def logout():
 @login_required
 def home():
     if request.method == 'POST':
+        print("function")
         f = request.files['filename']
+        daily = bool(request.form.getlist('daily'))
+        weekly = bool(request.form.getlist('weekly'))
+        yearly = bool(request.form.getlist('yearly'))
+
         if f:
             df = pd.read_csv(f, on_bad_lines='skip')
             header = [col for col in df.columns]
             if 'ds' and 'y' in header:
                 if pd.to_datetime(df['ds'], format='%Y-%m-%d').notnull().all():
                     print(f.save(os.path.join(app.config['FILE_UPLOADS'], f.filename)))
-                    file = File(userId=current_user.id, originalFileName=f.filename)
+                    file = File(userId=current_user.id,
+                                originalFileName=f.filename,
+                                daily=daily,
+                                weekly=weekly,
+                                yearly=yearly)
                     db.session.add(file)
                     db.session.commit()
-                    df.to_csv(os.path.join(app.config['FILE_UPLOADS'], f.filename + str(file.id)))
+                    filename = str(file.id) + "_" + f.filename
+                    df.to_csv(os.path.join(app.config['FILE_UPLOADS'], filename))
                     return redirect(url_for("results", fileid=file.id))
                 else:
                     flash('Please verify that all your dates are correctly formatted', 'danger')
@@ -79,43 +89,58 @@ def home():
 
 
 @app.route("/Results/<fileid>")
+@login_required
 def results(fileid):
     file = File.query.filter_by(id=int(fileid)).first()
-    filename = file.originalFileName + str(file.id)
-    path_file = os.path.join(app.config['FILE_UPLOADS'],filename )
+    print(file)
+    filename = str(file.id) + "_" + file.originalFileName
+    path_file = os.path.join(app.config['FILE_UPLOADS'], filename)
     df = pd.read_csv(path_file)
     df = df[['ds', 'y']]
+    df['ds'] = pd.to_datetime(df['ds'])
     #instantiating the Prophet object
-    m = Prophet()
+    #=False, yearly_seasonality=False
+    m = Prophet(daily_seasonality=file.daily,
+                weekly_seasonality=file.weekly,
+                yearly_seasonality=file.yearly)
     #fitting the dataframe
     m.fit(df)
     future = m.make_future_dataframe(periods=365)
     future.tail()
     forecast = m.predict(future)
-    downloadFile = forecast.to_csv(os.path.join(app.config['FILE_DOWNLOAD'], 'estimation ' + filename))
+    downloadFilename = 'estimation ' + filename
+    downloadFile = forecast.to_csv(os.path.join(app.config['FILE_DOWNLOAD'], downloadFilename))
+    file.estimatedFileName = downloadFilename
     print('file', downloadFile)
     fig1 = m.plot(forecast)
     fig2 = m.plot_components(forecast)
     nameFig1 = os.path.splitext(filename)[0] + "Fig1.png"
     nameFig2 = os.path.splitext(filename)[0] + "Fig2.png"
+    file.fig1Name = nameFig1
+    file.fig2Name = nameFig2
     fig1.savefig(os.path.join(app.config['FIGURES'], nameFig1))
     fig2.savefig(os.path.join(app.config['FIGURES'], nameFig2))
-    return render_template("results.html", fig1=nameFig1, fig2=nameFig2)
+    db.session.commit()
+    return render_template("results.html", fig1=nameFig1, fig2=nameFig2, filename=downloadFilename)
 
 @app.route("/file/<filename>")
+@login_required
 def send_file(filename):
-    return send_from_directory(app.config['FIGURES'], filename, as_attachment=True)
+    return send_from_directory(app.config['FIGURES_DOWNLOAD'], filename, as_attachment=True)
 
-@app.route("/Download")
-def download_file():
-    path = os.path.join(app.config['FILE_DOWNLOAD'], 'estimation.csv')
-    return send_file(path, as_attachment=True)
-"""
+@app.route("/Download/<filename>")
+@login_required
+def download_csv(filename):
+    return send_from_directory(app.config['CSV_Download'], filename, as_attachment=True)
+
 @app.route("/FilesEstimated")
 @login_required
 def filesEstimated():
-    return render_template("filesEstimated.html")
-"""
+    files = File.query.filter_by(userId=current_user.id).all()
+    return render_template("filesEstimated.html", files=files)
+
 app.config['FILE_UPLOADS'] = "./testBM/dataStorage"
 app.config['FILE_DOWNLOAD'] = "./testBM/dataStorage/FilesToDownload"
-app.config['FIGURES'] = "testBM/dataStorage/figures"
+app.config['FIGURES'] = "./testBM/dataStorage/figures"
+app.config['FIGURES_DOWNLOAD'] = "dataStorage/figures"
+app.config['CSV_Download'] = "dataStorage/FilesToDownload"
