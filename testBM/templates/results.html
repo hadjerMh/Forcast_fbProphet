@@ -1,0 +1,11 @@
+<!doctype html>
+<title>Python Flask File Download Example</title>
+<h2>Download a file</h2>
+
+<p>
+	<img src="{{url_for('send_file',filename=fig1)}}">
+	<a href="{{ url_for('send_file',filename=fig1) }}">Download</a>
+	<img src="{{url_for('send_file',filename=fig2)}}">
+	<a href="{{ url_for('send_file',filename=fig2) }}">Download</a>
+	Download the CSV file here
+</p>
