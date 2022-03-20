@@ -1,10 +1,14 @@
 {% extends "home.html" %}
+{% block title %}
+	Files
+{% endblock %}
 {% block content %}
-<table class="table">
+<table class="table table-hover">
   <thead>
     <tr>
       <th scope="col">Uploaded files</th>
-      <th scope="col">Results</th>
+      <th scope="col">Results page</th>
+      <th scope="col">Download files</th>
     </tr>
   </thead>
   <tbody>
@@ -12,13 +16,19 @@
     <tr>
       <td>{{file.originalFileName}}</td>
       <td><a href="{{ url_for('results',fileid=file.id) }}">Click here</a> </td>
+      <td>
+        {% if file.fig1Name and file.fig2Name and file.estimatedFileName %}
+        <a href="{{ url_for('send_file', filename=file.fig1Name) }}">{{file.fig1Name}}</a>
+        <br>
+        <a href="{{ url_for('send_file', filename=file.fig2Name) }}">{{file.fig2Name}}</a>
+        <br>
+        <a href="{{ url_for('download_csv', filename=file.estimatedFileName) }}">{{file.estimatedFileName}}</a>
+        <br>
+        {% endif %}
+      </td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
-
-
-
-
 
 {% endblock %}

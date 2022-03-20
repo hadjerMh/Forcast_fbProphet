@@ -1,12 +1,28 @@
 {% extends "home.html" %}
+{% block title %}
+	Results
+{% endblock %}
 {% block content %}
-<p>
-	<img src="{{url_for('send_file',filename=fig1)}}">
-	<a href="{{ url_for('send_file',filename=fig1) }}">Download</a>
-	<img src="{{url_for('send_file',filename=fig2)}}">
-	<a href="{{ url_for('send_file',filename=fig2) }}">Download</a>
+<div>
+	<h2 class="text-center">Results of the estimation</h2>
+	<div class="d-md-flex col-12 align-items-center">
+		<div class="d-flex flex-column col-md-6">
+			<div class="d-flex flex-column justify-content-center border_csv  p-2 my-md-4 my-2">
+				<span class="text-center">Download the CSV file with the estimations here</span>
+				<span class="text-center"><a href="{{ url_for('download_csv',filename=filename) }}">Download</a></span>
+			</div>
+			<div class="d-flex flex-column my-md-4 my-2">
+				<img src="{{url_for('send_file',filename=fig1)}}">
+				<span class="text-center"><a href="{{ url_for('send_file',filename=fig1) }}">Download</a></span>
+			</div>
+
+		</div>
+		<div class="d-flex flex-column col-md-6">
+			<img src="{{url_for('send_file',filename=fig2)}}">
+			<span class="text-center"><a href="{{ url_for('send_file',filename=fig2) }}">Download</a></span>
+		</div>
+	</div>
 	<br>
-	Download the CSV file here
-	<a href="{{ url_for('download_csv',filename=filename) }}">Download</a>
-</p>
+
+</div>
 {% endblock %}

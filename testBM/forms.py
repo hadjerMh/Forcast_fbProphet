@@ -5,6 +5,9 @@ from testBM.models import User
 
 
 class SignUpForm(FlaskForm):
+    """
+    Creating the form for the sign up page with flask_wtk
+    """
     username = StringField('username',
                            validators=[DataRequired(), Length(min=4, max=20)])
     email = StringField('email',
@@ -30,6 +33,9 @@ class SignUpForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
+    """
+       Creating the form for the login page with flask_wtk
+    """
     email = StringField('email',
                         validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])

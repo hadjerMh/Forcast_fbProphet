@@ -1,4 +1,4 @@
-from flask import redirect, url_for, render_template, request, send_file, send_from_directory, flash
+from flask import redirect, url_for, render_template, request, send_from_directory, flash, abort
 from testBM import app, db, bcrypt
 import os
 import pandas as pd
@@ -6,80 +6,104 @@ from fbprophet import Prophet
 from testBM.forms import LoginForm, SignUpForm
 from testBM.models import User, File
 from flask_login import login_user, logout_user, current_user, login_required
-import csv
 
 
 @app.route("/signup", methods=['GET', 'POST'])
 def signup():
+    """
+    The signup function renders the form in the signUp page and create users within the database
+    """
     # Redirect the user to the home page if he is already login
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     form = SignUpForm()
     if form.validate_on_submit():
-        # hashing the password and getting the value in string not bytes
+        # Hashing the password and getting the value in string not bytes
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        # adding tha user into the database
+        # Adding tha user into the database
         user = User(username=form.username.data,
                     email=form.email.data,
                     password=hashed_password)
         db.session.add(user)
         db.session.commit()
+        # Sending a success message
         flash(f"Account {form.username.data} created successfully", 'success')
         return redirect(url_for('login'))
-    return render_template("signup.html", title="Sign Up", form=form)
+    return render_template("signup.html", form=form)
+
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
+    """
+    Renders the login page and authenticate the user via his email and password that's
+    compared to the data on the database.
+    """
     # Redirect the user to the home page if he is already login
     if current_user.is_authenticated:
         return redirect(url_for('home'))
-
     form = LoginForm()
     if request.method == "POST":
         if form.validate_on_submit():
             user = User.query.filter_by(email=form.email.data).first()
             # Check if the email and the password are valid
             if user and bcrypt.check_password_hash(user.password, form.password.data):
-                # Use the login_user function to login our user
+                # Use the login_user function to login our user and render a success message
                 login_user(user, remember=bool(form.remember.data))
                 flash('Login successfully!', 'success')
                 return redirect(url_for('home'))
             else:
+                # Render an error message
                 flash('Failed to login, please check your username or your password', 'danger')
     return render_template("login.html", title="Login", form=form)
 
 
 @app.route("/logout")
 def logout():
+    """
+    The logout function authorize the user to logout and redirect him to the login page
+    """
     logout_user()
     return redirect("login")
+
 
 @app.route("/", methods=['GET', 'POST'])
 @login_required
 def home():
+    """
+    The home function renders the home page and get the file that needs to be estimated via the
+    post request and the data for the model training.
+    """
     if request.method == 'POST':
-        print("function")
         f = request.files['filename']
+        # Using the get method to support when a checkbox is unchecked
         daily = bool(request.form.getlist('daily'))
         weekly = bool(request.form.getlist('weekly'))
         yearly = bool(request.form.getlist('yearly'))
-
+        # Verifying that the file is not empty
         if f:
+            # Reading the file
             df = pd.read_csv(f, on_bad_lines='skip')
+            # Creating a list with columns header to make sure that we have a ds and y in the columns
             header = [col for col in df.columns]
             if 'ds' and 'y' in header:
+                # Verifying that the data is correctly formatted for ds
                 if pd.to_datetime(df['ds'], format='%Y-%m-%d').notnull().all():
-                    print(f.save(os.path.join(app.config['FILE_UPLOADS'], f.filename)))
+                    # Creating an instance on the database for the file
                     file = File(userId=current_user.id,
                                 originalFileName=f.filename,
                                 daily=daily,
                                 weekly=weekly,
                                 yearly=yearly)
                     db.session.add(file)
-                    db.session.commit()
-                    filename = str(file.id) + "_" + f.filename
-                    df.to_csv(os.path.join(app.config['FILE_UPLOADS'], filename))
-                    return redirect(url_for("results", fileid=file.id))
+                    try:
+                        db.session.commit()
+                        # Using the id to have a unique file name so there is no issue in the saving process
+                        filename = str(file.id) + "_" + f.filename
+                        # Saving the file
+                        df.to_csv(os.path.join(app.config['FILE_UPLOADS'], filename))
+                        return redirect(url_for("results", fileid=file.id))
+                    except:
+                        flash("An error occurred please reload your file")
                 else:
                     flash('Please verify that all your dates are correctly formatted', 'danger')
             else:
@@ -91,54 +115,98 @@ def home():
 @app.route("/Results/<fileid>")
 @login_required
 def results(fileid):
+    """
+    The result function renders the result page, this function does the estimation and generate a csv file
+    and figures from that estimation.
+    """
     file = File.query.filter_by(id=int(fileid)).first()
-    print(file)
-    filename = str(file.id) + "_" + file.originalFileName
-    path_file = os.path.join(app.config['FILE_UPLOADS'], filename)
-    df = pd.read_csv(path_file)
-    df = df[['ds', 'y']]
-    df['ds'] = pd.to_datetime(df['ds'])
-    #instantiating the Prophet object
-    #=False, yearly_seasonality=False
-    m = Prophet(daily_seasonality=file.daily,
-                weekly_seasonality=file.weekly,
-                yearly_seasonality=file.yearly)
-    #fitting the dataframe
-    m.fit(df)
-    future = m.make_future_dataframe(periods=365)
-    future.tail()
-    forecast = m.predict(future)
-    downloadFilename = 'estimation ' + filename
-    downloadFile = forecast.to_csv(os.path.join(app.config['FILE_DOWNLOAD'], downloadFilename))
-    file.estimatedFileName = downloadFilename
-    print('file', downloadFile)
-    fig1 = m.plot(forecast)
-    fig2 = m.plot_components(forecast)
-    nameFig1 = os.path.splitext(filename)[0] + "Fig1.png"
-    nameFig2 = os.path.splitext(filename)[0] + "Fig2.png"
-    file.fig1Name = nameFig1
-    file.fig2Name = nameFig2
-    fig1.savefig(os.path.join(app.config['FIGURES'], nameFig1))
-    fig2.savefig(os.path.join(app.config['FIGURES'], nameFig2))
-    db.session.commit()
-    return render_template("results.html", fig1=nameFig1, fig2=nameFig2, filename=downloadFilename)
+    # Raising an error of page not fount so the user can't access data that's not his
+    if file.userId == current_user.id:
+        # Recreating the file name
+        filename = str(file.id) + "_" + file.originalFileName
+        path_file = os.path.join(app.config['FILE_UPLOADS'], filename)
+        # Reading the csv file
+        df = pd.read_csv(path_file)
+        # Keeping only the ds and y columns
+        df = df[['ds', 'y']]
+        # Insuring that the ds column has the right type
+        df['ds'] = pd.to_datetime(df['ds'])
+        # Instantiating the Prophet object
+        m = Prophet(daily_seasonality=file.daily,
+                    weekly_seasonality=file.weekly,
+                    yearly_seasonality=file.yearly)
+        # Fitting the dataframe
+        m.fit(df)
+        # Forcasting away
+        future = m.make_future_dataframe(periods=365)
+        future.tail()
+        forecast = m.predict(future)
+        # Creating a filename based on the filename with the id in orther for it to be unique
+        downloadFilename = 'estimation ' + filename
+        forecast.to_csv(os.path.join(app.config['FILE_DOWNLOAD'], downloadFilename))
+        # Adding the estimated filename
+        file.estimatedFileName = downloadFilename
+        # Plotting the figures
+        fig1 = m.plot(forecast)
+        fig2 = m.plot_components(forecast)
+        # Using the same method as used before for the filenames
+        nameFig1 = os.path.splitext(filename)[0] + "Fig1.png"
+        nameFig2 = os.path.splitext(filename)[0] + "Fig2.png"
+        # Adding the figures filanames
+        file.fig1Name = nameFig1
+        file.fig2Name = nameFig2
+        # Saving the figures
+        fig1.savefig(os.path.join(app.config['FIGURES'], nameFig1))
+        fig2.savefig(os.path.join(app.config['FIGURES'], nameFig2))
+        # Update the db
+        db.session.commit()
+        return render_template("results.html", fig1=nameFig1, fig2=nameFig2, filename=downloadFilename)
+    else:
+        abort(404)
+
 
 @app.route("/file/<filename>")
 @login_required
 def send_file(filename):
+    """this function takes in the filename and return the right figure to be shown and downloaded
+    """
     return send_from_directory(app.config['FIGURES_DOWNLOAD'], filename, as_attachment=True)
+
 
 @app.route("/Download/<filename>")
 @login_required
 def download_csv(filename):
+    """this function takes in the filename and return the right csv that needs to be downloaded
+    """
     return send_from_directory(app.config['CSV_Download'], filename, as_attachment=True)
+
 
 @app.route("/FilesEstimated")
 @login_required
 def filesEstimated():
+    """
+    This function renders the files associated with the user so he cas view the results when needed
+     or directly download the files.
+    """
     files = File.query.filter_by(userId=current_user.id).all()
     return render_template("filesEstimated.html", files=files)
 
+
+# Errors pages
+@app.errorhandler(404)
+def invalid_route(e):
+    """Custom templates for the error 404 page
+    """
+    return render_template("error404.html")
+
+
+@app.errorhandler(500)
+def invalid_route(e):
+    """Custom templates for the error 500 page
+    """
+    return render_template("error500.html")
+
+# File routes
 app.config['FILE_UPLOADS'] = "./testBM/dataStorage"
 app.config['FILE_DOWNLOAD'] = "./testBM/dataStorage/FilesToDownload"
 app.config['FIGURES'] = "./testBM/dataStorage/figures"
