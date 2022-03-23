@@ -15,7 +15,7 @@
 </head>
 
 <body>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-transparent">
+        <nav class="navbar navbar-expand-md navbar-dark bg-transparent">
           <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
@@ -35,63 +35,68 @@
           </div>
         </nav>
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category,message in messages %}
-                <div class="alert alert-{{ category }}">
-                    {{ message }}
+        <div class="d-flex justify-content-center col-12 p-md-2 mt-4 mb-3 block_white">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category,message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+            {% block content %}
+            <form method="POST" class="d-flex justify-content-center" enctype="multipart/form-data" action="/">
+                <div class="mt-3">
+                 <legend class="mb-2">
+                    Upload your CSV File here
+                </legend>
+                <p class="text-muted">
+                    In order to be estimated your file need to respond to the conditions bellow:
+                    <ul class="text-muted">
+                        <li>The time column on the csv need to be named ds and have the format year-month-day.</li>
+                        <li>The field that you want to estimate need to be named y and needs to be populated with value.</li>
+
+                    </ul>
+                </p>
+                <input class="col-12" type="file" id="myFile" name="filename" accept=".csv">
+                <br>
+                <fieldset class="form-group">
+                <legend class="mb-2">
+                    I want my data to be represented (choose as many values as wanted):
+                </legend>
+                    <div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="daily" name="daily">
+                      <label class="form-check-label" for="daily">
+                        Daily
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="weekly" name="weekly">
+                      <label class="form-check-label" for="weekly">
+                        Weekly
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="yearly" name="yearly">
+                      <label class="form-check-label" for="yearly">
+                        Yearly
+                      </label>
+                    </div>
+                    </div>
+                    <legend class="mb-2">Choose an estimation time period in days for your data </legend>
+                    <div class="form-group d-md-flex align-items-center">
+                        <label class="form-control-label"> Estimation period (in days) </label>
+                        <input type="number" min="1" class="form-control ml-md-2 col-lg-2 col-md-3" name ="period" required>
+                    </div>
+                </fieldset>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-info my-2"> Submit </button>
                 </div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
-
-
-    <div class="d-flex justify-content-center p-2 mt-4 block_white">
-        {% block content %}
-        <form method="POST" enctype="multipart/form-data" action="/">
-             <legend class="mb-2">
-                Upload your CSV File here
-            </legend>
-            <p class="text-muted">
-                In order to be estimated your file need to respond to the conditions bellow:
-                <ul class="text-muted">
-                    <li>The time column on the csv need to be named ds and have the format year-month-day.</li>
-                    <li>The field that you want to estimate need to be named y and needs to be populated with value.</li>
-
-                </ul>
-            </p>
-            <input type="file" id="myFile" name="filename" accept=".csv">
-            <br>
-            <fieldset class="form-group">
-            <legend class="mb-2">
-                I want my data to be represented (choose as many values as wanted):
-            </legend>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="daily" name="daily">
-                  <label class="form-check-label" for="daily">
-                    Daily
-                  </label>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="weekly" name="weekly">
-                  <label class="form-check-label" for="weekly">
-                    Weekly
-                  </label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="yearly" name="yearly">
-                  <label class="form-check-label" for="yearly">
-                    Yearly
-                  </label>
-                </div>
-
-            </fieldset>
-            <div class="text-center">
-                <button type="submit" class="btn btn-info my-2"> Submit </button>
-            </div>
-
-        </form>
-        {% endblock %}
+            </form>
+            {% endblock %}
         </div>
     </div>
 </body>

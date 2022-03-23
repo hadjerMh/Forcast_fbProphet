@@ -34,8 +34,7 @@ class File(db.Model):
     daily = db.Column(db.Boolean, default=False)
     weekly = db.Column(db.Boolean, default=False)
     yearly = db.Column(db.Boolean, default=False)
-    fig1Name = db.Column(db.String(100))
-    fig2Name = db.Column(db.String(100))
+    period = db.Column(db.Integer)
     userId = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):

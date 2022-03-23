@@ -5,24 +5,34 @@
 {% block content %}
 <div>
 	<h2 class="text-center">Results of the estimation</h2>
+	<div class="d-flex flex-column justify-content-center border_csv col-12 p-2 my-md-4 my-2">
+				<span class="text-center">Download the CSV file with the estimations here</span>
+				{% for row in data %}
+					<div class="col-12 h-25" style="max-height:200px;overflow: auto;">{{row|safe}}</div>
+				{% endfor %}
+				<span class="text-center"><a href="{{ url_for('download_csv',filename=filename) }}">Download</a></span>
+	</div>
 	<div class="d-md-flex col-12 align-items-center">
 		<div class="d-flex flex-column col-md-6">
-			<div class="d-flex flex-column justify-content-center border_csv  p-2 my-md-4 my-2">
-				<span class="text-center">Download the CSV file with the estimations here</span>
-				<span class="text-center"><a href="{{ url_for('download_csv',filename=filename) }}">Download</a></span>
-			</div>
 			<div class="d-flex flex-column my-md-4 my-2">
-				<img src="{{url_for('send_file',filename=fig1)}}">
-				<span class="text-center"><a href="{{ url_for('send_file',filename=fig1) }}">Download</a></span>
+				<img src="data:image/png;base64, {{ fig1url }}">
+
 			</div>
 
 		</div>
 		<div class="d-flex flex-column col-md-6">
-			<img src="{{url_for('send_file',filename=fig2)}}">
-			<span class="text-center"><a href="{{ url_for('send_file',filename=fig2) }}">Download</a></span>
+			<img src="data:image/png;base64, {{ fig2url }}">
+
 		</div>
 	</div>
 	<br>
 
 </div>
+<script type='text/javascript'>
+  window.onload = function() {
+    const thead = document.querySelectorAll('table');
+    thead.forEach(e => e.classList.add('table'));
+    thead.forEach(e => e.classList.add('table-hover'));
+  }
+</script>
 {% endblock %}

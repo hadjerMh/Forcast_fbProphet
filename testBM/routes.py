@@ -6,6 +6,9 @@ from fbprophet import Prophet
 from testBM.forms import LoginForm, SignUpForm
 from testBM.models import User, File
 from flask_login import login_user, logout_user, current_user, login_required
+from io import BytesIO
+import base64
+import urllib.parse
 
 
 @app.route("/signup", methods=['GET', 'POST'])
@@ -79,6 +82,8 @@ def home():
         daily = bool(request.form.getlist('daily'))
         weekly = bool(request.form.getlist('weekly'))
         yearly = bool(request.form.getlist('yearly'))
+        period = int(request.form['period'])
+        #print(period)
         # Verifying that the file is not empty
         if f:
             # Reading the file
@@ -93,7 +98,8 @@ def home():
                                 originalFileName=f.filename,
                                 daily=daily,
                                 weekly=weekly,
-                                yearly=yearly)
+                                yearly=yearly,
+                                period=period)
                     db.session.add(file)
                     try:
                         db.session.commit()
@@ -138,39 +144,38 @@ def results(fileid):
         # Fitting the dataframe
         m.fit(df)
         # Forcasting away
-        future = m.make_future_dataframe(periods=365)
+        print(file.period)
+        future = m.make_future_dataframe(periods=file.period)
         future.tail()
         forecast = m.predict(future)
         # Creating a filename based on the filename with the id in orther for it to be unique
         downloadFilename = 'estimation ' + filename
-        forecast.to_csv(os.path.join(app.config['FILE_DOWNLOAD'], downloadFilename))
+        fileforcasted = forecast.to_csv(os.path.join(app.config['FILE_DOWNLOAD'], downloadFilename))
         # Adding the estimated filename
         file.estimatedFileName = downloadFilename
         # Plotting the figures
         fig1 = m.plot(forecast)
         fig2 = m.plot_components(forecast)
-        # Using the same method as used before for the filenames
-        nameFig1 = os.path.splitext(filename)[0] + "Fig1.png"
-        nameFig2 = os.path.splitext(filename)[0] + "Fig2.png"
-        # Adding the figures filanames
-        file.fig1Name = nameFig1
-        file.fig2Name = nameFig2
-        # Saving the figures
-        fig1.savefig(os.path.join(app.config['FIGURES'], nameFig1))
-        fig2.savefig(os.path.join(app.config['FIGURES'], nameFig2))
+        # Creating the buffer for the figures
+        imgfig1 = BytesIO()
+        imgfig2 = BytesIO()
+        # Saving the images in the buffer
+        fig1.savefig(imgfig1, format='png')
+        fig2.savefig(imgfig2, format='png')
+        # Seeking the entire file from zero to length file
+        imgfig1.seek(0)
+        imgfig2.seek(0)
+        # Figure URLS
+        fig1URL = urllib.parse.quote(base64.b64encode(imgfig1.getvalue()).decode())
+        fig2URL = urllib.parse.quote(base64.b64encode(imgfig2.getvalue()).decode())
+
         # Update the db
         db.session.commit()
-        return render_template("results.html", fig1=nameFig1, fig2=nameFig2, filename=downloadFilename)
+        #rendering the csv file in the html
+        csvFile = [forecast.to_html()]
+        return render_template("results.html", filename=downloadFilename, fig1url=fig1URL, fig2url=fig2URL, data=csvFile)
     else:
         abort(404)
-
-
-@app.route("/file/<filename>")
-@login_required
-def send_file(filename):
-    """this function takes in the filename and return the right figure to be shown and downloaded
-    """
-    return send_from_directory(app.config['FIGURES_DOWNLOAD'], filename, as_attachment=True)
 
 
 @app.route("/Download/<filename>")
@@ -209,6 +214,4 @@ def invalid_route(e):
 # File routes
 app.config['FILE_UPLOADS'] = "./testBM/dataStorage"
 app.config['FILE_DOWNLOAD'] = "./testBM/dataStorage/FilesToDownload"
-app.config['FIGURES'] = "./testBM/dataStorage/figures"
-app.config['FIGURES_DOWNLOAD'] = "dataStorage/figures"
 app.config['CSV_Download'] = "dataStorage/FilesToDownload"
